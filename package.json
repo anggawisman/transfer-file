@@ -1,0 +1,22 @@
+{
+  "name": "transfer-file",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "npm run dev -w @transfer-file/server",
+    "dev:web": "npm run dev -w @transfer-file/web",
+    "dev:all": "concurrently -n server,web -c blue,green \"npm run dev -w @transfer-file/server\" \"npm run dev -w @transfer-file/web\"",
+    "build": "npm run build -w @transfer-file/shared && npm run build -w @transfer-file/web && npm run build -w @transfer-file/server",
+    "test": "npm run test --workspaces --if-present",
+    "start": "npm run start -w @transfer-file/server"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
