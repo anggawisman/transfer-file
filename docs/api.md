@@ -16,8 +16,8 @@ Tokens are issued with role claims:
 
 | Role | Issued by | Used for |
 |------|-----------|----------|
-| `host` | `POST /api/session` | Upload, session management |
-| `receiver` | `POST /api/session/join` | Download, list files |
+| `host` | `POST /api/session` | Upload, download receiver files, session management |
+| `receiver` | `POST /api/session/join` | Upload, download host files, list files |
 
 ## Error responses
 
@@ -30,7 +30,12 @@ All errors return JSON:
 }
 ```
 
-Common codes: `NO_TOKEN`, `BAD_TOKEN`, `WRONG_ROLE`, `NO_SESSION`, `WRONG_PIN`, `NOT_FOUND`, `NOT_READY`, `FILE_TOO_LARGE`, `FILE_LIMIT`, `LAN_ONLY`.
+Common codes: `NO_TOKEN`, `BAD_TOKEN`, `SESSION_ENDED`, `WRONG_ROLE`, `NO_SESSION`, `WRONG_PIN`, `NOT_FOUND`, `NOT_READY`, `FILE_TOO_LARGE`, `FILE_LIMIT`, `LAN_ONLY`.
+
+JWTs are bound to the **active in-memory session**. Tokens are rejected with `401 SESSION_ENDED` when:
+- The session has ended
+- A new session was created (different `sessionId` or `tokenId`)
+- A receiver token is used before PIN join completes
 
 ---
 
@@ -146,6 +151,53 @@ Broadcasts `session_ended` WebSocket event.
 
 ---
 
+### `GET /api/sessions/storage`
+
+Storage summary for the host session panel. Requires **host** token.
+
+**Response `200`:**
+
+```json
+{
+  "activeSession": {
+    "id": "550e8400-e29b-41d4-a716-446655440000",
+    "pin": "482910",
+    "createdAt": "2026-09-01T10:00:00.000Z",
+    "expiresAt": "2026-09-02T10:00:00.000Z",
+    "receiverConnected": true
+  },
+  "diskSessions": [
+    {
+      "id": "550e8400-e29b-41d4-a716-446655440000",
+      "fileCount": 3,
+      "totalBytes": 1048576,
+      "isActive": true
+    }
+  ]
+}
+```
+
+`diskSessions` includes all folders under `data/sessions/`. `isActive` is `true` when the folder matches the in-memory session.
+
+---
+
+### `DELETE /api/sessions/storage`
+
+End the current session (if any), wipe **all** folders under `data/sessions/`, and broadcast `session_ended`. Requires **host** token.
+
+**Response `200`:**
+
+```json
+{
+  "ok": true,
+  "removedCount": 2
+}
+```
+
+All previously issued JWTs for the ended session become invalid (`401 SESSION_ENDED`).
+
+---
+
 ### `GET /api/files`
 
 List all files in the current session. Requires **host** or **receiver** token.
@@ -162,6 +214,7 @@ List all files in the current session. Requires **host** or **receiver** token.
       "mimeType": "video/mp4",
       "status": "ready",
       "uploadedBytes": 1073741824,
+      "uploadedBy": "host",
       "createdAt": "2026-09-01T10:05:00.000Z"
     }
   ]
@@ -170,11 +223,15 @@ List all files in the current session. Requires **host** or **receiver** token.
 
 **File status values:** `pending`, `uploading`, `ready`, `failed`
 
+**`uploadedBy`:** `"host"` (PC) or `"receiver"` (phone) — set from JWT role at prepare time.
+
 ---
 
 ### `POST /api/upload/prepare`
 
-Register file metadata before uploading chunks. Requires **host** token.
+Register file metadata before uploading chunks. Requires **host** or **receiver** token.
+
+`uploadedBy` is set server-side from the JWT role.
 
 **Request body:**
 
@@ -205,6 +262,7 @@ Register file metadata before uploading chunks. Requires **host** token.
     "mimeType": "video/mp4",
     "status": "pending",
     "uploadedBytes": 0,
+    "uploadedBy": "host",
     "createdAt": "2026-09-01T10:05:00.000Z"
   }
 }
@@ -212,15 +270,13 @@ Register file metadata before uploading chunks. Requires **host** token.
 
 **Response `400`:** `FILE_LIMIT` (max 100 files) or `FILE_TOO_LARGE`
 
-**Response `403`:** Receiver token used (wrong role)
-
 Broadcasts `file_added` WebSocket event.
 
 ---
 
 ### `PUT /api/upload/:fileId`
 
-Upload a file chunk. Requires **host** token.
+Upload a file chunk. Requires **host** or **receiver** token.
 
 **Headers:**
 
@@ -258,15 +314,13 @@ When `uploadedBytes >= size`, status becomes `ready` and `file_ready` is broadca
 
 **Response `400`:** `BAD_RANGE`, `SIZE_MISMATCH`
 
-**Response `403`:** Receiver token used
-
 **Response `404`:** `NOT_FOUND`
 
 ---
 
 ### `GET /api/download/:fileId`
 
-Stream a file to the receiver. Requires **receiver** token. File must have `status: "ready"`.
+Stream a file. Requires **host** or **receiver** token. File must have `status: "ready"`.
 
 **Response `200`:** Binary stream with headers:
 
@@ -275,8 +329,6 @@ Content-Type: video/mp4
 Content-Length: 1073741824
 Content-Disposition: attachment; filename="video.mp4"
 ```
-
-**Response `403`:** Host token used (wrong role)
 
 **Response `404`:** `NOT_FOUND` or `NOT_READY`
 

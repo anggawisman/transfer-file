@@ -153,8 +153,8 @@ See [CLAUDE.md](../CLAUDE.md) for project conventions:
 - TypeScript strict mode, no `any`
 - Zod validation at API boundaries
 - Immutable state updates in React
-- Host role: upload + session management
-- Receiver role: download only
+- Host role: upload, download receiver files, session management
+- Receiver role: upload, download host files
 
 ## Further reading
 

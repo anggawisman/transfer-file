@@ -2,7 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { createWriteStream, createReadStream } from "node:fs";
 import { randomUUID } from "node:crypto";
-import type { FileMeta } from "@transfer-file/shared";
+import type { FileMeta, SessionRole } from "@transfer-file/shared";
 import { sanitizeFilename } from "../config.js";
 
 export interface StoredFile extends FileMeta {
@@ -18,7 +18,12 @@ export class FileStore {
     return new FileStore(path.join(dataDir, "sessions", sessionId));
   }
 
-  createPending(name: string, size: number, mimeType?: string): StoredFile {
+  createPending(
+    name: string,
+    size: number,
+    uploadedBy: SessionRole,
+    mimeType?: string,
+  ): StoredFile {
     const id = randomUUID();
     const safeName = sanitizeFilename(name);
     const diskPath = path.join(this.sessionDir, `${id}_${safeName}`);
@@ -29,6 +34,7 @@ export class FileStore {
       mimeType,
       status: "pending",
       uploadedBytes: 0,
+      uploadedBy,
       createdAt: new Date().toISOString(),
       diskPath,
     };

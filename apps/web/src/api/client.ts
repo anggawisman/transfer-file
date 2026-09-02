@@ -5,6 +5,8 @@ import type {
   FileMeta,
   JoinSessionResponse,
   PrepareUploadResponse,
+  SessionStorageResponse,
+  WipeSessionStorageResponse,
   WsEvent,
 } from "@transfer-file/shared";
 
@@ -31,6 +33,12 @@ export function clearSession(): void {
   localStorage.removeItem(ROLE_KEY);
 }
 
+function handleAuthFailure(code: string | undefined): void {
+  if (code === "SESSION_ENDED" || code === "BAD_TOKEN") {
+    clearSession();
+  }
+}
+
 async function apiFetch<T>(
   path: string,
   options: RequestInit = {},
@@ -48,7 +56,13 @@ async function apiFetch<T>(
 
   const res = await fetch(path, { ...options, headers });
   if (!res.ok) {
-    const err = (await res.json().catch(() => ({}))) as { error?: string };
+    const err = (await res.json().catch(() => ({}))) as {
+      error?: string;
+      code?: string;
+    };
+    if (res.status === 401) {
+      handleAuthFailure(err.code);
+    }
     throw new Error(err.error ?? `Request failed: ${res.status}`);
   }
   return res.json() as Promise<T>;
@@ -79,6 +93,19 @@ export async function listFiles(): Promise<FileMeta[]> {
 export async function endSession(): Promise<void> {
   await apiFetch("/api/session", { method: "DELETE" });
   clearSession();
+}
+
+export async function getSessionStorage(): Promise<SessionStorageResponse> {
+  return apiFetch<SessionStorageResponse>("/api/sessions/storage");
+}
+
+export async function wipeAllSessionStorage(): Promise<WipeSessionStorageResponse> {
+  const data = await apiFetch<WipeSessionStorageResponse>(
+    "/api/sessions/storage",
+    { method: "DELETE" },
+  );
+  clearSession();
+  return data;
 }
 
 export async function uploadFile(
@@ -144,7 +171,13 @@ export async function downloadFile(
   });
 
   if (!res.ok) {
-    const err = (await res.json().catch(() => ({}))) as { error?: string };
+    const err = (await res.json().catch(() => ({}))) as {
+      error?: string;
+      code?: string;
+    };
+    if (res.status === 401) {
+      handleAuthFailure(err.code);
+    }
     throw new Error(err.error ?? "Download failed");
   }
 

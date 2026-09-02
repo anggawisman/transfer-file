@@ -1,9 +1,10 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import type { FileMeta } from "@transfer-file/shared";
-import { joinSession, getStoredToken } from "../api/client";
-import { downloadFile } from "../api/client";
+import { joinSession, getStoredToken, downloadFile } from "../api/client";
+import { FileDropzone } from "../components/FileDropzone";
 import { FileList } from "../components/FileList";
-import { useFileList } from "../hooks/useFiles";
+import { useFileList, useUploadQueue } from "../hooks/useFiles";
+import { useSessionEnded } from "../hooks/useSessionEnded";
 
 export function ReceiverPage() {
   const [pin, setPin] = useState("");
@@ -11,9 +12,18 @@ export function ReceiverPage() {
   const [error, setError] = useState<string | null>(null);
   const [joining, setJoining] = useState(false);
   const { files } = useFileList();
+  const { uploads, enqueue } = useUploadQueue();
   const [downloadProgress, setDownloadProgress] = useState<
     Map<string, { loaded: number; total: number }>
   >(new Map());
+
+  const handleSessionEnded = useCallback(() => {
+    setJoined(false);
+    setError(null);
+    setPin("");
+  }, []);
+
+  useSessionEnded(handleSessionEnded);
 
   const handleJoin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -86,7 +96,7 @@ export function ReceiverPage() {
         )}
 
         <p className="text-xs text-slate-500 text-center">
-          Keep screen awake during large downloads
+          Keep screen awake during large transfers
         </p>
       </div>
     );
@@ -95,22 +105,42 @@ export function ReceiverPage() {
   return (
     <div className="space-y-6">
       <div className="rounded-xl bg-emerald-500/10 border border-emerald-500/30 px-4 py-3 text-emerald-300 text-sm">
-        Connected — download files sent from the PC
+        Connected — send files to PC or download files from PC
       </div>
 
       {error && (
         <p className="text-center text-red-400 text-sm">{error}</p>
       )}
 
-      <FileList
-        files={files}
-        mode="receiver"
-        onDownload={(f) => void handleDownload(f)}
-        downloadProgress={downloadProgress}
-      />
+      <section>
+        <h2 className="text-lg font-semibold text-slate-200 mb-4">
+          Send files (phone → PC)
+        </h2>
+        <FileDropzone onFiles={enqueue} />
+        {uploads.length > 0 && (
+          <div className="mt-4 space-y-2">
+            {uploads.map((u) => (
+              <div key={u.name} className="text-sm text-slate-400">
+                Uploading {u.name}:{" "}
+                {Math.round((u.progress / u.total) * 100)}%
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
+
+      <section>
+        <h2 className="text-lg font-semibold text-slate-200 mb-4">Files</h2>
+        <FileList
+          files={files}
+          mode="receiver"
+          onDownload={(f) => void handleDownload(f)}
+          downloadProgress={downloadProgress}
+        />
+      </section>
 
       <p className="text-xs text-slate-500 text-center">
-        Downloads use Wi‑Fi only — no mobile data
+        Transfers use Wi‑Fi only — no mobile data
       </p>
     </div>
   );

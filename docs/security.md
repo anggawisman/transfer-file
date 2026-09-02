@@ -42,19 +42,23 @@ Tokens are HS256-signed JWTs issued by [`AuthService`](../apps/server/src/servic
 
 Tokens are stored in browser `localStorage` on the client.
 
+**Session binding:** After JWT signature verification, the server checks that the token's `sessionId` and `tokenId` match the active in-memory session. When the host ends a session or wipes storage, all tokens from that session are immediately invalid (`401 SESSION_ENDED`), even if the JWT has not expired.
+
 ### Role enforcement
 
 Middleware in [`apps/server/src/middleware/auth.ts`](../apps/server/src/middleware/auth.ts) enforces roles:
 
 | Route | Required role |
 |-------|---------------|
-| `POST /api/upload/prepare` | `host` |
-| `PUT /api/upload/:fileId` | `host` |
+| `POST /api/upload/prepare` | `host` or `receiver` |
+| `PUT /api/upload/:fileId` | `host` or `receiver` |
+| `GET /api/download/:fileId` | `host` or `receiver` |
 | `DELETE /api/session` | `host` |
-| `GET /api/download/:fileId` | `receiver` |
+| `GET /api/sessions/storage` | `host` |
+| `DELETE /api/sessions/storage` | `host` |
 | `GET /api/files` | `host` or `receiver` |
 
-A receiver token calling an upload endpoint receives **403 Forbidden** with code `WRONG_ROLE`.
+Both roles can upload and download. Anyone with a valid token for the session can access any ready file via the API. The web UI only offers Download for files uploaded by the other party.
 
 ## Transport security (TLS)
 
@@ -100,7 +104,7 @@ Files are **not encrypted at rest**. They exist as plain files on the PC disk un
 |---------|--------|
 | Rate limiting on auth/upload endpoints | **Not implemented** — planned for future release |
 | SHA-256 upload verification | Schema supports it; server does not verify yet |
-| Token revocation before expiry | Tokens valid until TTL expires |
+| Token revocation before expiry | **Implemented** — tokens invalidated when session ends or storage is wiped |
 | Audit logging | Console output only |
 | mTLS / client certificates | Not used |
 

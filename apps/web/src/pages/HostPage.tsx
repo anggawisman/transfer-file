@@ -1,9 +1,15 @@
-import { useEffect, useState } from "react";
-import type { CreateSessionResponse } from "@transfer-file/shared";
-import { createSession, endSession, connectWebSocket } from "../api/client";
+import { useCallback, useEffect, useState } from "react";
+import type { CreateSessionResponse, FileMeta } from "@transfer-file/shared";
+import {
+  createSession,
+  endSession,
+  connectWebSocket,
+  downloadFile,
+} from "../api/client";
 import { QRDisplay } from "../components/QRDisplay";
 import { FileDropzone } from "../components/FileDropzone";
 import { FileList } from "../components/FileList";
+import { SessionPanel } from "../components/SessionPanel";
 import { useFileList, useUploadQueue } from "../hooks/useFiles";
 
 export function HostPage() {
@@ -12,6 +18,9 @@ export function HostPage() {
   const [ending, setEnding] = useState(false);
   const { files } = useFileList();
   const { uploads, enqueue } = useUploadQueue();
+  const [downloadProgress, setDownloadProgress] = useState<
+    Map<string, { loaded: number; total: number }>
+  >(new Map());
 
   useEffect(() => {
     void createSession()
@@ -38,6 +47,9 @@ export function HostPage() {
     return () => ws.close();
   }, [session?.session.id]);
 
+  const handleSessionReset = useCallback((next: CreateSessionResponse) => {
+    setSession(next);
+  }, []);
   const handleEndSession = async () => {
     setEnding(true);
     try {
@@ -48,6 +60,27 @@ export function HostPage() {
       setError(err instanceof Error ? err.message : "Failed to end session");
     } finally {
       setEnding(false);
+    }
+  };
+
+  const handleDownload = async (file: FileMeta) => {
+    setDownloadProgress((prev) =>
+      new Map(prev).set(file.id, { loaded: 0, total: file.size }),
+    );
+    try {
+      await downloadFile(file, (loaded, total) => {
+        setDownloadProgress((prev) =>
+          new Map(prev).set(file.id, { loaded, total }),
+        );
+      });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Download failed");
+    } finally {
+      setDownloadProgress((prev) => {
+        const next = new Map(prev);
+        next.delete(file.id);
+        return next;
+      });
     }
   };
 
@@ -66,10 +99,12 @@ export function HostPage() {
   }
 
   return (
-    <div className="space-y-8">
+    <div className="flex flex-col lg:flex-row gap-6 lg:gap-8">
+      <SessionPanel onSessionReset={handleSessionReset} />
+      <div className="flex-1 min-w-0 space-y-8">
       <section className="rounded-2xl bg-slate-800/60 border border-slate-700 p-6">
         <h2 className="text-lg font-semibold text-slate-200 mb-4">
-          Phone pairing
+          Device pairing
         </h2>
         <div className="flex flex-col md:flex-row items-center gap-8">
           <QRDisplay url={session.joinUrl} />
@@ -95,7 +130,7 @@ export function HostPage() {
 
       <section>
         <h2 className="text-lg font-semibold text-slate-200 mb-4">
-          Upload files (PC → phone)
+          Send files (PC → phone)
         </h2>
         <FileDropzone onFiles={enqueue} />
         {uploads.length > 0 && (
@@ -122,8 +157,14 @@ export function HostPage() {
             End session
           </button>
         </div>
-        <FileList files={files} mode="host" />
+        <FileList
+          files={files}
+          mode="host"
+          onDownload={(f) => void handleDownload(f)}
+          downloadProgress={downloadProgress}
+        />
       </section>
+      </div>
     </div>
   );
 }

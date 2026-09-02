@@ -8,6 +8,17 @@ function formatBytes(bytes: number): string {
   return `${(bytes / (1024 * 1024 * 1024)).toFixed(2)} GB`;
 }
 
+function uploaderLabel(uploadedBy: FileMeta["uploadedBy"]): string {
+  return uploadedBy === "host" ? "From PC" : "From phone";
+}
+
+function canDownloadFile(file: FileMeta, mode: "host" | "receiver"): boolean {
+  if (file.status !== "ready") return false;
+  return mode === "host"
+    ? file.uploadedBy === "receiver"
+    : file.uploadedBy === "host";
+}
+
 interface FileListProps {
   files: FileMeta[];
   mode: "host" | "receiver";
@@ -25,8 +36,8 @@ export function FileList({
     return (
       <p className="text-center text-slate-400 py-8">
         {mode === "host"
-          ? "No files yet — upload from your PC above."
-          : "No files available yet — wait for the PC to upload."}
+          ? "No files yet — upload from your PC or wait for phone uploads."
+          : "No files yet — upload from your phone or wait for PC uploads."}
       </p>
     );
   }
@@ -39,6 +50,8 @@ export function FileList({
           file.size > 0
             ? Math.round((file.uploadedBytes / file.size) * 100)
             : 0;
+        const showDownload =
+          onDownload && canDownloadFile(file, mode);
 
         return (
           <li
@@ -48,9 +61,11 @@ export function FileList({
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0 flex-1">
                 <p className="font-medium text-slate-100 truncate">{file.name}</p>
-                <p className="text-sm text-slate-400">{formatBytes(file.size)}</p>
+                <p className="text-sm text-slate-400">
+                  {formatBytes(file.size)} · {uploaderLabel(file.uploadedBy)}
+                </p>
               </div>
-              {mode === "receiver" && file.status === "ready" && onDownload && (
+              {showDownload && (
                 <button
                   type="button"
                   onClick={() => onDownload(file)}
@@ -94,8 +109,12 @@ export function FileList({
               </div>
             )}
 
-            {file.status === "ready" && mode === "host" && (
-              <p className="text-xs text-emerald-400 mt-2">Ready for phone download</p>
+            {file.status === "ready" && !showDownload && (
+              <p className="text-xs text-emerald-400 mt-2">
+                {mode === "host"
+                  ? "Ready for phone download"
+                  : "Ready for your download"}
+              </p>
             )}
           </li>
         );

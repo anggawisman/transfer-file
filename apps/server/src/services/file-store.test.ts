@@ -18,7 +18,7 @@ describe("FileStore", () => {
 
   it("writes chunks and marks file ready", async () => {
     const store = new FileStore(tmpDir);
-    const file = store.createPending("test.txt", 10);
+    const file = store.createPending("test.txt", 10, "host");
     const chunk = Buffer.from("hello worl");
     const updated = await store.writeChunk(file, chunk, 0);
 
@@ -31,7 +31,7 @@ describe("FileStore", () => {
 
   it("resumes at offset", async () => {
     const store = new FileStore(tmpDir);
-    const file = store.createPending("resume.bin", 20);
+    const file = store.createPending("resume.bin", 20, "receiver");
     await store.writeChunk(file, Buffer.from("aaaa"), 0);
     const updated = await store.writeChunk(
       file,

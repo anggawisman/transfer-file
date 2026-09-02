@@ -4,6 +4,7 @@ import {
   JoinSessionRequestSchema,
   PrepareUploadRequestSchema,
   FileMetaSchema,
+  SessionStorageResponseSchema,
 } from "./schemas.js";
 
 describe("JoinSessionRequestSchema", () => {
@@ -50,7 +51,31 @@ describe("FileMetaSchema", () => {
       size: 100,
       status: "ready",
       uploadedBytes: 100,
+      uploadedBy: "host",
       createdAt: new Date().toISOString(),
+    });
+    assert.equal(result.success, true);
+  });
+});
+
+describe("SessionStorageResponseSchema", () => {
+  it("accepts valid session storage response", () => {
+    const result = SessionStorageResponseSchema.safeParse({
+      activeSession: {
+        id: "550e8400-e29b-41d4-a716-446655440000",
+        pin: "123456",
+        createdAt: new Date().toISOString(),
+        expiresAt: new Date().toISOString(),
+        receiverConnected: false,
+      },
+      diskSessions: [
+        {
+          id: "550e8400-e29b-41d4-a716-446655440000",
+          fileCount: 2,
+          totalBytes: 1024,
+          isActive: true,
+        },
+      ],
     });
     assert.equal(result.success, true);
   });

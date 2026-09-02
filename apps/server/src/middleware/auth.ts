@@ -2,6 +2,7 @@ import type { Context, Next } from "hono";
 import { isPrivateIp } from "../config.js";
 import type { AppConfig } from "../config.js";
 import type { AuthService } from "../services/auth.js";
+import type { SessionStore } from "../services/session-store.js";
 import type { SessionRole } from "@transfer-file/shared";
 
 export function lanOnlyMiddleware(config: AppConfig) {
@@ -24,6 +25,7 @@ export function lanOnlyMiddleware(config: AppConfig) {
 
 export function createAuthMiddleware(
   auth: AuthService,
+  sessions: SessionStore,
   requiredRole?: SessionRole,
 ) {
   return async (c: Context, next: Next) => {
@@ -39,6 +41,10 @@ export function createAuthMiddleware(
     const payload = await auth.verifyToken(token);
     if (!payload) {
       return c.json({ error: "Invalid or expired token", code: "BAD_TOKEN" }, 401);
+    }
+
+    if (!sessions.isTokenValid(payload.sessionId, payload.role, payload.tokenId)) {
+      return c.json({ error: "Session ended", code: "SESSION_ENDED" }, 401);
     }
 
     if (requiredRole && payload.role !== requiredRole) {

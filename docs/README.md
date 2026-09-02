@@ -1,12 +1,12 @@
 # Transfer File — Documentation
 
-Transfer File is a **PC-to-phone LAN file transfer** tool. Run a small server on your PC, upload files through a web UI, and let your phone download them over local Wi‑Fi — no cloud, no mobile data, no app install on the phone.
+Transfer File is a **PC ↔ phone LAN file transfer** tool. Run a small server on your PC; both devices exchange files over local Wi‑Fi — no cloud, no mobile data, no app install on the phone.
 
 ## Start here
 
 | I want to… | Read this |
 |------------|-----------|
-| Send files from my PC to my phone | [User guide](user-guide.md) |
+| Transfer files between PC and phone | [User guide](user-guide.md) |
 | Understand how the system is built | [Architecture](architecture.md) |
 | Integrate with or extend the API | [API reference](api.md) |
 | Review security assumptions | [Security](security.md) |
@@ -23,7 +23,8 @@ Transfer File is a **PC-to-phone LAN file transfer** tool. Run a small server on
 | [Security](security.md) | Threat model, authentication, TLS, limitations |
 | [Development](development.md) | Local setup, commands, project layout, testing |
 | [ADR-001: Hub model](decisions/ADR-001-hub-model.md) | Why PC-hosted HTTP hub instead of WebRTC P2P |
-| [ADR-002: One-way transfer](decisions/ADR-002-one-way-pc-to-phone.md) | Why PC → phone only in v1 |
+| [ADR-002: One-way transfer](decisions/ADR-002-one-way-pc-to-phone.md) | Superseded — was PC → phone only in v1 |
+| [ADR-005: Bidirectional](decisions/ADR-005-bidirectional-transfer.md) | PC ↔ phone in one session |
 | [ADR-003: TLS and PIN](decisions/ADR-003-lan-tls-and-pin.md) | Self-signed HTTPS + 6-digit PIN pairing |
 | [ADR-004: Node monorepo](decisions/ADR-004-node-monorepo-stack.md) | Node.js + npm workspaces stack choice |
 

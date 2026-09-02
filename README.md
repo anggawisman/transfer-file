@@ -1,6 +1,6 @@
 # Transfer File
 
-PC-to-phone LAN file transfer over Wi‑Fi. No cloud, no mobile data usage.
+PC ↔ phone LAN file transfer over Wi‑Fi. No cloud, no mobile data usage.
 
 ## Quick start
 
@@ -11,10 +11,10 @@ npm run dev:all
 
 Then:
 1. Open **https://localhost:8787** on your PC (host UI)
-2. Upload files on the PC
-3. On your phone (same Wi‑Fi), scan the QR code or open the join URL
-4. Enter the 6-digit PIN
-5. Tap **Download** on each file
+2. On your phone (same Wi‑Fi), scan the QR code or open the join URL
+3. Enter the 6-digit PIN
+4. **PC → phone:** upload on PC, download on phone
+5. **Phone → PC:** upload on phone, download on PC
 
 ## Documentation
 
@@ -63,7 +63,7 @@ netsh advfirewall firewall add rule name="Transfer File" dir=in action=allow pro
 
 - Self-signed TLS certificate (generated on first run in `data/certs/`)
 - 6-digit PIN required for phone to join
-- Receiver tokens cannot upload files
+- Both PC and phone can upload; each downloads the other's files
 - No internet/cloud relay — all traffic stays on LAN
 
 See [docs/security.md](docs/security.md) for the full security model.
@@ -85,6 +85,6 @@ STRICT_LAN=true
 | Phone can't connect | Same Wi‑Fi? Guest network AP isolation blocks LAN |
 | Certificate warning | Accept once — LAN-only self-signed cert |
 | Firewall blocks | Run the `netsh` rule above on Windows |
-| Upload fails on phone | Expected — only PC can upload (PC → phone only) |
+| Upload fails on PC host page | Use the phone join page (`/join`) to upload from phone |
 
 More troubleshooting: [docs/user-guide.md](docs/user-guide.md)

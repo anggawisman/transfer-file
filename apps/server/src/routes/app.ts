@@ -6,10 +6,15 @@ import { Readable } from "node:stream";
 import type { AppConfig } from "../config.js";
 import { APP_NAME, APP_VERSION, getLanIp } from "../config.js";
 import type { AuthService } from "../services/auth.js";
-import { SessionStore } from "../services/session-store.js";
+import { receiverTokenId, SessionStore } from "../services/session-store.js";
 import { FileStore } from "../services/file-store.js";
+import { scanDiskSessions, wipeAllSessionDirs } from "../services/session-storage.js";
 import { wsHub } from "../services/ws-hub.js";
-import { lanOnlyMiddleware, createAuthMiddleware } from "../middleware/auth.js";
+import {
+  lanOnlyMiddleware,
+  createAuthMiddleware,
+  getAuth,
+} from "../middleware/auth.js";
 import {
   JoinSessionRequestSchema,
   PrepareUploadRequestSchema,
@@ -29,9 +34,8 @@ export function createApp(deps: AppDeps) {
   app.use("*", cors({ origin: "*", credentials: true }));
   app.use("/api/*", lanOnlyMiddleware(config));
 
-  const hostAuth = createAuthMiddleware(auth, "host");
-  const anyAuth = createAuthMiddleware(auth);
-  const receiverAuth = createAuthMiddleware(auth, "receiver");
+  const hostAuth = createAuthMiddleware(auth, sessions, "host");
+  const anyAuth = createAuthMiddleware(auth, sessions);
 
   app.get("/api/health", (c) => {
     return c.json({
@@ -102,7 +106,7 @@ export function createApp(deps: AppDeps) {
     const token = await auth.issueToken(
       session.info.id,
       "receiver",
-      `receiver-${session.info.id}`,
+      receiverTokenId(session.info.id),
       config.sessionTtlMs,
     );
 
@@ -135,6 +139,30 @@ export function createApp(deps: AppDeps) {
     return c.json({ ok: true });
   });
 
+  app.get("/api/sessions/storage", hostAuth, async (c) => {
+    const session = sessions.get();
+    const activeSessionId = session?.info.id ?? null;
+    const diskSessions = await scanDiskSessions(config.dataDir, activeSessionId);
+
+    return c.json({
+      activeSession: session?.info ?? null,
+      diskSessions,
+    });
+  });
+
+  app.delete("/api/sessions/storage", hostAuth, async (c) => {
+    const current = sessions.end();
+    if (current) {
+      wsHub.broadcast({
+        type: "session_ended",
+        sessionId: current.info.id,
+      });
+    }
+
+    const removedCount = await wipeAllSessionDirs(config.dataDir);
+    return c.json({ ok: true as const, removedCount });
+  });
+
   app.get("/api/files", anyAuth, (c) => {
     const session = sessions.get();
     if (!session) {
@@ -149,7 +177,7 @@ export function createApp(deps: AppDeps) {
     return c.json({ files });
   });
 
-  app.post("/api/upload/prepare", hostAuth, async (c) => {
+  app.post("/api/upload/prepare", anyAuth, async (c) => {
     const session = sessions.get();
     if (!session) {
       return c.json({ error: "No active session", code: "NO_SESSION" }, 404);
@@ -169,10 +197,12 @@ export function createApp(deps: AppDeps) {
       return c.json({ error: "File too large", code: "FILE_TOO_LARGE" }, 400);
     }
 
+    const authPayload = getAuth(c);
     const store = FileStore.forSession(config.dataDir, session.info.id);
     const stored = store.createPending(
       parsed.data.name,
       parsed.data.size,
+      authPayload.role,
       parsed.data.mimeType,
     );
     session.files.set(stored.id, stored);
@@ -183,7 +213,7 @@ export function createApp(deps: AppDeps) {
     return c.json({ file: meta });
   });
 
-  app.put("/api/upload/:fileId", hostAuth, async (c) => {
+  app.put("/api/upload/:fileId", anyAuth, async (c) => {
     const session = sessions.get();
     if (!session) {
       return c.json({ error: "No active session", code: "NO_SESSION" }, 404);
@@ -234,7 +264,7 @@ export function createApp(deps: AppDeps) {
     return c.json({ file: store.toMeta(updated) });
   });
 
-  app.get("/api/download/:fileId", receiverAuth, async (c) => {
+  app.get("/api/download/:fileId", anyAuth, async (c) => {
     const session = sessions.get();
     if (!session) {
       return c.json({ error: "No active session", code: "NO_SESSION" }, 404);

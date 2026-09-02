@@ -1,6 +1,6 @@
 # User Guide
 
-This guide walks you through transferring files from your PC to your phone over local Wi‑Fi.
+This guide walks you through transferring files between your PC and phone over local Wi‑Fi.
 
 ## What you need
 
@@ -42,17 +42,7 @@ https://localhost:8787
 
 Accept the security warning if prompted (self-signed certificate — safe on your LAN).
 
-### 3. Upload files on the PC
-
-On the host page you will see:
-
-- **Phone pairing** — QR code and 6-digit PIN
-- **Upload zone** — drag files here or click to browse
-- **Files list** — shows upload progress and "Ready for phone download" status
-
-Drag videos, documents, photos, or any other files into the upload zone. Large files (GB+) are supported.
-
-### 4. Connect your phone
+### 3. Connect your phone
 
 On your phone (connected to the same Wi‑Fi):
 
@@ -63,15 +53,33 @@ On your phone (connected to the same Wi‑Fi):
 
 The PC host page will show "Phone connected" when pairing succeeds.
 
-### 5. Download files on your phone
+### 4. PC → phone
 
-After joining, you will see the file list. For each file with status ready:
+On the **PC host page**:
 
-1. Tap the **Download** button
-2. Wait for the progress bar to complete
-3. The file saves to your phone's Downloads folder (or iOS share/save sheet)
+1. Drag files into the **Send files (PC → phone)** upload zone (or click to browse)
+2. Wait for upload progress to complete
 
-**Tip:** Keep your phone screen on during large downloads to prevent the browser from suspending the transfer.
+On the **phone join page**:
+
+1. Find files labeled **From PC**
+2. Tap **Download** on each ready file
+3. Files save to your phone's Downloads folder (or iOS share/save sheet)
+
+### 5. Phone → PC
+
+On the **phone join page**:
+
+1. Use **Send files (phone → PC)** to pick photos or other files
+2. Wait for upload progress to complete
+
+On the **PC host page**:
+
+1. Find files labeled **From phone**
+2. Click **Download** on each ready file
+3. Files save via your browser's download folder
+
+**Tip:** Keep your phone screen on during large transfers to prevent the browser from suspending the connection.
 
 ## UI walkthrough
 
@@ -79,10 +87,21 @@ After joining, you will see the file list. For each file with status ready:
 
 | Section | What it does |
 |---------|--------------|
-| Phone pairing | QR code + PIN for phone to join; shows "Phone connected" when paired |
-| Upload zone | Drag-and-drop or file picker; supports multiple files |
-| Upload progress | Per-file percentage while uploading to server |
-| Files list | All session files with status; "End session" button at top |
+| Sessions panel | Active session count, disk folder list (active/orphan), delete-all action |
+| Device pairing | QR code + PIN for phone to join; shows "Phone connected" when paired |
+| Send files (PC → phone) | Drag-and-drop or file picker for uploads to phone |
+| Files list | All session files with uploader labels; Download for phone uploads |
+| End session | Deletes current session files and invalidates all tokens |
+
+### Session panel (host sidebar)
+
+The left panel on the host page shows:
+
+- **Active in memory** — `1` while a session is running, `0` after it ends
+- **Disk folders** — all session directories on disk, labeled **Active** or **Orphan**
+- **Delete all session data** — wipes every folder under `data/sessions/`, ends the current session, and forces phones to re-enter the PIN
+
+When the host ends a session, phones are disconnected automatically and returned to the PIN screen.
 
 ### Receiver page (phone)
 
@@ -90,18 +109,20 @@ After joining, you will see the file list. For each file with status ready:
 |---------|--------------|
 | PIN entry | 6-digit numeric input; appears before joining |
 | Connected banner | Green banner confirming successful pairing |
-| File list | Read-only list with large Download buttons |
-| Download progress | Per-file progress bar during download |
+| Send files (phone → PC) | File picker for uploads to PC |
+| File list | Download buttons for PC uploads; labels show origin |
+| Progress | Per-file upload/download progress bars |
 
 ## What works and what does not
 
-| Works | Does not work (v1) |
-|-------|---------------------|
-| PC → phone file transfer | Phone → PC upload |
-| Large files (up to 10 GB default) | Transfer over the internet |
-| Multiple files per session | Phone running the server |
-| Same Wi‑Fi or PC hotspot | Guest Wi‑Fi with AP isolation |
-| Mobile data off (Wi‑Fi only) | Different Wi‑Fi networks |
+| Works | Does not work |
+|-------|---------------|
+| PC → phone transfer | Transfer over the internet |
+| Phone → PC transfer | Phone running the server |
+| Both directions in one session | Guest Wi‑Fi with AP isolation |
+| Large files (up to 10 GB default) | Different Wi‑Fi networks |
+| Same Wi‑Fi or PC hotspot | |
+| Mobile data off (Wi‑Fi only) | |
 
 ## Troubleshooting
 
@@ -110,7 +131,7 @@ After joining, you will see the file list. For each file with status ready:
 | Phone cannot open the URL | Confirm both devices are on the same Wi‑Fi. Guest networks often block device-to-device traffic. |
 | Certificate warning on phone | Tap "Advanced" → "Proceed" (wording varies by browser). This is expected for self-signed LAN certs. |
 | Wrong PIN error | Check the PIN on the PC host page. PIN resets when you create a new session. |
-| Upload fails on phone | Expected — only the PC can upload files. Use the PC host page to add files. |
+| Upload fails on PC from phone URL | Use `/join` on the phone for phone uploads; use `localhost` on PC for PC uploads. |
 | Windows firewall blocks connection | Run in PowerShell (as Administrator): `netsh advfirewall firewall add rule name="Transfer File" dir=in action=allow protocol=TCP localport=8787` |
 | Files disappear | Files are ephemeral. They are deleted when you click "End session" or start a new session. |
 | Slow transfer | Wi‑Fi speed depends on your router. 5 GHz Wi‑Fi is faster than 2.4 GHz. Stay close to the router. |
@@ -132,4 +153,4 @@ Then open `https://localhost:8787` on PC and `https://<your-lan-ip>:8787/join` o
 - No files are sent to the cloud
 - No analytics or tracking
 - Files are stored temporarily on your PC in `data/sessions/` and deleted when the session ends
-- Only devices on your LAN that know the PIN can download files
+- Only devices on your LAN that know the PIN can join and transfer files

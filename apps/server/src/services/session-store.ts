@@ -1,6 +1,10 @@
 import { randomInt } from "node:crypto";
 import { randomUUID } from "node:crypto";
-import type { FileMeta, SessionInfo } from "@transfer-file/shared";
+import type { FileMeta, SessionInfo, SessionRole } from "@transfer-file/shared";
+
+export function receiverTokenId(sessionId: string): string {
+  return `receiver-${sessionId}`;
+}
 
 export interface SessionState {
   info: SessionInfo;
@@ -72,5 +76,20 @@ export class SessionStore {
     if (!session) return;
     session.receiverConnected = true;
     session.info.receiverConnected = true;
+  }
+
+  isTokenValid(sessionId: string, role: SessionRole, tokenId: string): boolean {
+    const session = this.get();
+    if (!session) return false;
+    if (session.info.id !== sessionId) return false;
+
+    if (role === "host") {
+      return tokenId === session.hostTokenId;
+    }
+
+    return (
+      session.receiverConnected &&
+      tokenId === receiverTokenId(session.info.id)
+    );
   }
 }

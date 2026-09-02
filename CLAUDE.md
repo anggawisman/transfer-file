@@ -1,6 +1,6 @@
 # Transfer File
 
-PC-to-phone LAN file transfer. Node.js + Hono server, React + Vite web UI.
+PC ↔ phone LAN file transfer. Node.js + Hono server, React + Vite web UI.
 
 ## Architecture summary
 
@@ -10,9 +10,9 @@ apps/web      React UI — HostPage (PC) + ReceiverPage (phone /join)
 packages/shared  Zod schemas, types, constants (CHUNK_SIZE_BYTES = 2 MiB)
 ```
 
-**Flow:** PC creates session → uploads files → phone joins with PIN → phone downloads.
+**Flow:** PC creates session → phone joins with PIN → both upload and download each other's files.
 
-**Roles:** `host` (upload, manage session) | `receiver` (download only)
+**Roles:** `host` (PC) | `receiver` (phone) — both can upload and download; `uploadedBy` tracks origin.
 
 Full design: [docs/architecture.md](docs/architecture.md)
 
@@ -41,8 +41,8 @@ Full design: [docs/architecture.md](docs/architecture.md)
 - Zod validation at API boundaries (`packages/shared/src/schemas.ts`)
 - Immutable state updates in React
 - Chunked uploads: 2 MiB (`CHUNK_SIZE_BYTES`)
-- Host role: upload + session management
-- Receiver role: download only
+- Host role: upload, download receiver files, session management
+- Receiver role: upload, download host files
 
 ## Key files
 

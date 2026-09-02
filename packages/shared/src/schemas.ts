@@ -18,6 +18,7 @@ export const FileMetaSchema = z.object({
   mimeType: z.string().max(127).optional(),
   status: FileStatusSchema,
   uploadedBytes: z.number().int().nonnegative(),
+  uploadedBy: SessionRoleSchema,
   sha256: z.string().length(64).optional(),
   createdAt: z.string().datetime(),
 });
@@ -69,6 +70,28 @@ export const FileListResponseSchema = z.object({
   files: z.array(FileMetaSchema),
 });
 export type FileListResponse = z.infer<typeof FileListResponseSchema>;
+
+export const DiskSessionInfoSchema = z.object({
+  id: z.string().uuid(),
+  fileCount: z.number().int().nonnegative(),
+  totalBytes: z.number().int().nonnegative(),
+  isActive: z.boolean(),
+});
+export type DiskSessionInfo = z.infer<typeof DiskSessionInfoSchema>;
+
+export const SessionStorageResponseSchema = z.object({
+  activeSession: SessionInfoSchema.nullable(),
+  diskSessions: z.array(DiskSessionInfoSchema),
+});
+export type SessionStorageResponse = z.infer<typeof SessionStorageResponseSchema>;
+
+export const WipeSessionStorageResponseSchema = z.object({
+  ok: z.literal(true),
+  removedCount: z.number().int().nonnegative(),
+});
+export type WipeSessionStorageResponse = z.infer<
+  typeof WipeSessionStorageResponseSchema
+>;
 
 export const HealthResponseSchema = z.object({
   ok: z.literal(true),

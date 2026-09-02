@@ -39,4 +39,35 @@ describe("SessionStore", () => {
     assert.equal(ended?.info.id, created.info.id);
     assert.equal(store.get(), null);
   });
+
+  it("validates host token against active session", () => {
+    const session = store.create(60_000);
+    assert.equal(
+      store.isTokenValid(session.info.id, "host", session.hostTokenId),
+      true,
+    );
+    assert.equal(
+      store.isTokenValid(session.info.id, "host", "wrong-token"),
+      false,
+    );
+    store.end();
+    assert.equal(
+      store.isTokenValid(session.info.id, "host", session.hostTokenId),
+      false,
+    );
+  });
+
+  it("validates receiver token only after join", () => {
+    const session = store.create(60_000);
+    const receiverId = `receiver-${session.info.id}`;
+    assert.equal(
+      store.isTokenValid(session.info.id, "receiver", receiverId),
+      false,
+    );
+    store.markReceiverJoined();
+    assert.equal(
+      store.isTokenValid(session.info.id, "receiver", receiverId),
+      true,
+    );
+  });
 });
